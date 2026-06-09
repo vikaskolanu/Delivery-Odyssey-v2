@@ -1,0 +1,38 @@
+<div class="order-sidebar">
+    <h3>Delivery State</h3>
+    <div id="current-status" class="current-status"></div>
+    <div class="legend-row">
+        <span class="legend-line"></span>
+        <span>Current accepted route</span>
+    </div>
+    <div class="legend-row">
+        <span class="legend-line candidate"></span>
+        <span>Candidate route after insertion</span>
+    </div>
+    <h3 style="margin-top:14px;">Incoming Order</h3>
+    <label for="order-platform">Platform</label>
+    <select id="order-platform">
+        <option value="Zepto">Zepto</option>
+        <option value="Blinkit">Blinkit</option>
+        <option value="Instamart">Instamart</option>
+    </select>
+    <label for="order-reward">Reward</label>
+    <input id="order-reward" type="number" min="0" value="0">
+    <div class="button-row">
+        <button id="random-order">Random</button>
+        <button id="map-pick-order" class="secondary">Pick Map</button>
+    </div>
+    <div class="button-row">
+        <button id="accept-order" class="accept">Accept</button>
+        <button id="reject-order" class="reject">Reject</button>
+    </div>
+    <div id="order-status" class="order-status">
+        Create an order to compare reward against route detour.
+    </div>
+</div>
+
+<div class="simulation-control">
+    <button id="play-agent-route">Play</button>
+    <button id="pause-agent-route" class="secondary">Pause</button>
+    <button id="restart-agent-route" class="secondary">Restart</button>
+</div>

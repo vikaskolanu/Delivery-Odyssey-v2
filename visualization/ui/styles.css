@@ -1,0 +1,170 @@
+
+.simulation-control {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid #d5d9e2;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    font-family: Arial, sans-serif;
+}
+
+.simulation-control button {
+    border: 0;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: white;
+    background: #1456d9;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.simulation-control button.secondary {
+    color: #1f2937;
+    background: #e8edf5;
+}
+
+.moving-agent-icon {
+    width: 45px;
+    height: 45px;
+    background: transparent;
+    border: 0;
+}
+
+.moving-agent-icon img {
+    width: 45px;
+    height: 45px;
+    transform-origin: center center;
+    transition:
+        transform 220ms linear,
+        filter 220ms linear;
+    filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
+}
+
+.order-sidebar {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 9999;
+    width: 300px;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid #d5d9e2;
+    border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+    font-family: Arial, sans-serif;
+}
+
+.order-sidebar h3 {
+    margin: 0 0 12px;
+    color: #111827;
+    font-size: 16px;
+}
+
+.order-sidebar label {
+    display: block;
+    margin-top: 10px;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.order-sidebar select,
+.order-sidebar input {
+    width: 100%;
+    height: 34px;
+    margin-top: 5px;
+    padding: 6px 8px;
+    border: 1px solid #cfd6e2;
+    border-radius: 6px;
+    background: white;
+    color: #111827;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.order-sidebar .button-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.order-sidebar button {
+    min-height: 34px;
+    border: 0;
+    border-radius: 6px;
+    background: #1456d9;
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.order-sidebar button.secondary {
+    color: #1f2937;
+    background: #e8edf5;
+}
+
+.order-sidebar button.secondary.active {
+    color: white;
+    background: #7c3aed;
+}
+
+.order-sidebar button.accept {
+    background: #108a46;
+}
+
+.order-sidebar button.reject {
+    background: #b42318;
+}
+
+.order-status {
+    min-height: 88px;
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 6px;
+    background: #f4f6fa;
+    color: #1f2937;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.current-status {
+    margin-bottom: 12px;
+    padding: 10px;
+    border-left: 4px solid #1456d9;
+    border-radius: 6px;
+    background: #eef4ff;
+    color: #1f2937;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.legend-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 6px;
+    color: #4b5563;
+    font-size: 12px;
+}
+
+.legend-line {
+    width: 28px;
+    height: 0;
+    border-top: 4px solid #0066ff;
+    border-radius: 999px;
+}
+
+.legend-line.candidate {
+    border-top-color: #ff8a00;
+    border-top-style: dashed;
+}
