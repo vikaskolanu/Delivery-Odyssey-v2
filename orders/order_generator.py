@@ -18,7 +18,9 @@ def generate_order(
 
     stores,
 
-    platform
+    platform,
+
+    simulation_time
 
 ):
 
@@ -80,13 +82,15 @@ def generate_order(
 
             continue
 
-    reward = random.randint(
+    prep_time = random.randint(
 
-        50,
+        2,
 
-        300
+        6
 
     )
+
+    sla_minutes = 15
 
     return Order(
 
@@ -96,6 +100,10 @@ def generate_order(
 
         customer_node=customer_node,
 
-        reward=reward
+        created_time=simulation_time,
+
+        prep_time=prep_time,
+
+        sla_minutes=sla_minutes
 
     )

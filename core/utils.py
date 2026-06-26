@@ -1,5 +1,21 @@
 import math
 
+AVERAGE_SPEED_M_PER_MIN = 350
+
+
+def distance_to_minutes(
+    distance_meters
+):
+
+    return round(
+
+        distance_meters
+        /
+        AVERAGE_SPEED_M_PER_MIN,
+
+        1
+
+    )
 
 def haversine_distance(
 

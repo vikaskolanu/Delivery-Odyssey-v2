@@ -1,38 +1,94 @@
-<div class="order-sidebar">
-    <h3>Delivery State</h3>
-    <div id="current-status" class="current-status"></div>
-    <div class="legend-row">
-        <span class="legend-line"></span>
-        <span>Current accepted route</span>
-    </div>
-    <div class="legend-row">
-        <span class="legend-line candidate"></span>
-        <span>Candidate route after insertion</span>
-    </div>
-    <h3 style="margin-top:14px;">Incoming Order</h3>
-    <label for="order-platform">Platform</label>
-    <select id="order-platform">
-        <option value="Zepto">Zepto</option>
-        <option value="Blinkit">Blinkit</option>
-        <option value="Instamart">Instamart</option>
-    </select>
-    <label for="order-reward">Reward</label>
-    <input id="order-reward" type="number" min="0" value="0">
-    <div class="button-row">
-        <button id="random-order">Random</button>
-        <button id="map-pick-order" class="secondary">Pick Map</button>
-    </div>
-    <div class="button-row">
-        <button id="accept-order" class="accept">Accept</button>
-        <button id="reject-order" class="reject">Reject</button>
-    </div>
-    <div id="order-status" class="order-status">
-        Create an order to compare reward against route detour.
-    </div>
-</div>
+<div class="do-sidebar">
 
-<div class="simulation-control">
-    <button id="play-agent-route">Play</button>
-    <button id="pause-agent-route" class="secondary">Pause</button>
-    <button id="restart-agent-route" class="secondary">Restart</button>
+    <!-- HEADER -->
+    <div class="do-header">
+        <div class="logo-mark"></div>
+        <div>
+            <h2>Delivery Odyssey</h2>
+            <p>Dynamic Route Optimizer</p>
+        </div>
+    </div>
+
+    <!-- RIDER -->
+    <div class="card">
+        <div class="card-label">Rider</div>
+        <div id="current-status" class="status-box">
+            <div class="status-row">
+                <span>Status</span>
+                <span class="chip moving">MOVING</span>
+            </div>
+            <div class="status-row">
+                <span>Simulation</span>
+                <span id="simulation-time">0 min</span>
+            </div>
+            <div class="status-row">
+                <span>Speed</span>
+                <span>350 m/min</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ACTIVE DELIVERIES -->
+    <div class="card">
+        <div class="card-label">Active Deliveries</div>
+        <div id="active-orders-list">
+            <div class="empty-state">No active orders</div>
+        </div>
+    </div>
+
+    <!-- OPTIMIZER -->
+    <div class="card">
+        <div class="card-label">Optimizer</div>
+        <div id="order-status" class="status-box muted">
+            Waiting for an incoming order...
+        </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="card">
+        <div class="card-label">Controls</div>
+
+        <div class="field-group">
+            <label>Platform</label>
+            <select id="order-platform">
+                <option value="Zepto">Zepto</option>
+                <option value="Blinkit">Blinkit</option>
+                <option value="Instamart">Instamart</option>
+            </select>
+        </div>
+
+        <button id="random-order" class="btn btn-primary">Random Order</button>
+        <button id="map-pick-order" class="btn btn-secondary">Pick From Map</button>
+
+        <div class="btn-row">
+            <button id="play-agent-route" class="btn btn-primary">Play</button>
+            <button id="pause-agent-route" class="btn btn-secondary">Pause</button>
+        </div>
+
+        <button id="restart-agent-route" class="btn btn-ghost">Restart</button>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="card">
+        <div class="card-label">Legend</div>
+        <div class="legend-grid">
+            <div class="legend-item">
+                <span class="dot rider"></span>
+                <span>Rider</span>
+            </div>
+            <div class="legend-item">
+                <span class="dot pickup"></span>
+                <span>Pickup</span>
+            </div>
+            <div class="legend-item">
+                <span class="dot customer"></span>
+                <span>Customer</span>
+            </div>
+            <div class="legend-item">
+                <span class="dot warehouse"></span>
+                <span>Warehouse</span>
+            </div>
+        </div>
+    </div>
+
 </div>

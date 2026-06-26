@@ -2,6 +2,8 @@ import folium
 import pandas as pd
 import json
 
+
+
 def platform_icon_path(platform):
 
     return {
@@ -110,12 +112,18 @@ def build_stores_payload(
 def initial_order_payload(order):
 
     return {
-        "platform": order.platform,
-        "reward": order.reward,
-        "pickupNodeId": str(order.pickup_node),
-        "dropNodeId": str(order.customer_node)
-    }
 
+        "platform": order.platform,
+
+        "pickupNodeId": str(
+            order.pickup_node
+        ),
+
+        "dropNodeId": str(
+            order.customer_node
+        )
+
+    }
 
 def add_agent_animation(
     folium_map,
@@ -159,16 +167,20 @@ def add_agent_animation(
 
     animation_script = f"""
         window.addEventListener("load", function () {{
+            const AVERAGE_SPEED_M_PER_MIN = 350;
+            const MAX_EXTRA_TIME = 7;
             const graphData = {graph_json};
             const storesData = {stores_json};
             const initialOrder = {initial_order_json};
             let activeRouteNodeIds = {route_json};
             let activeStopNodeIds = {required_stops_json};
             let activeStopLabels = {{}};
-            let activeOrderCount = 1;
-            let committedReward = initialOrder.reward;
+            let activeOrderCount = 0;
+            let customerMarker = null;
+            let pickupMarker = null;
+            
             let agentRoutePoints = activeRouteNodeIds.map(
-                (nodeId) => graphData.nodes[nodeId]
+                (nodeId) => graphData.nodes[String(nodeId)]
             );
             let candidateOrder = null;
             let pickFromMap = false;
@@ -183,9 +195,9 @@ def add_agent_animation(
 
             const agentIcon = L.divIcon({{
                 className: "moving-agent-icon",
-                html: '<img id="moving-agent-image" src="assets/Delivery_Agent_Icon.png">',
-                iconSize: [35, 35],
-                iconAnchor: [17, 17]
+                html: '<img id="moving-agent-image" src="assets/Delivery_Agent_Icon.png" style="width:28px;height:28px;object-fit:contain;display:block;">',
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
             }});
 
             const movingAgentMarker = L.marker(
@@ -194,7 +206,7 @@ def add_agent_animation(
                     icon: agentIcon,
                     zIndexOffset: 1000
                 }}
-            ).addTo({map_name}).bindPopup("Delivery Agent");
+            ).addTo({map_name});
 
             const activeRouteLine = L.polyline(
                 agentRoutePoints,
@@ -216,7 +228,6 @@ def add_agent_animation(
             const agentImage = document.getElementById("moving-agent-image");
             const orderStatus = document.getElementById("order-status");
             const currentStatus = document.getElementById("current-status");
-            const rewardInput = document.getElementById("order-reward");
             const mapPickButton = document.getElementById("map-pick-order");
 
             L.DomEvent.disableClickPropagation(
@@ -257,13 +268,34 @@ def add_agent_animation(
             }}
 
             function updateCurrentStatus() {{
-                const nextStop = nextStopInfo();
+
+                const currentStatus =
+                    document.getElementById(
+                        "current-status"
+                    );
+
+                if (
+                    activeRouteNodeIds.length === 0
+                ) {{
+
+                    currentStatus.innerHTML = `
+                        Rider is idle
+                    `;
+
+                    return;
+                }}
 
                 currentStatus.innerHTML = `
-                    <strong>Rider is carrying ${{activeOrderCount}} active order${{activeOrderCount === 1 ? "" : "s"}}</strong><br>
-                    Next: ${{nextStop.label}}<br>
-                    Distance to next stop: ${{nextStop.distance}} m<br>
-                    Committed reward: ₹${{committedReward}}
+                    <strong>
+                        Active Delivery
+                    </strong><br>
+
+                    Remaining Stops:
+                    ${{
+                        activeRouteNodeIds.length
+                        -
+                        currentRouteIndex
+                    }}
                 `;
             }}
 
@@ -652,58 +684,133 @@ def add_agent_animation(
             }}
 
             function evaluateOrder(platform, customerNodeId) {{
+
                 const customerPoint = graphData.nodes[customerNodeId];
-                const store = nearestPlatformStore(platform, customerPoint);
+
+                const store = nearestPlatformStore(
+                    platform,
+                    customerPoint
+                );
+
                 const pickupNodeId = store.nodeId;
-                const orderPath = shortestPath(pickupNodeId, customerNodeId);
 
-                if (!orderPath) {{
-                    setStatus("No route found for this order.");
-                    return null;
-                }}
-
-                const orderDistance = routeDistanceNodeIds(orderPath);
-                const reward = Math.round(
-                    Math.max(
-                        60,
-                        Math.min(320, orderDistance * 0.055)
-                    )
-                );
-                rewardInput.value = reward;
-
-                const remainingRoute = activeRouteNodeIds.slice(
-                    currentRouteIndex
-                );
-                const insertion = buildCandidateRoute(
-                    remainingRoute,
+                const orderPath = shortestPath(
                     pickupNodeId,
                     customerNodeId
                 );
 
-                if (!insertion) {{
-                    setStatus("No insertion route found.");
+                if (!orderPath) {{
+
+                    setStatus(
+                        "No route found for this order."
+                    );
+
                     return null;
                 }}
 
-                const extraDistance = Math.max(1, insertion.extraDistance);
-                const score = reward / extraDistance;
-                const detourRatio = extraDistance / Math.max(1, orderDistance);
-                const recommendation = (
-                    score >= 0.06 &&
-                    detourRatio <= 0.7
-                ) ? "ACCEPT" : "REJECT";
+                const orderDistance =
+                    routeDistanceNodeIds(
+                        orderPath
+                    );
+
+                const remainingRoute =
+                    activeRouteNodeIds.slice(
+                        currentRouteIndex
+                    );
+
+                const insertion =
+                    buildCandidateRoute(
+                        remainingRoute,
+                        pickupNodeId,
+                        customerNodeId
+                    );
+
+                if (!insertion) {{
+
+                    setStatus(
+                        "No insertion route found."
+                    );
+
+                    return null;
+                }}
+
+                const extraDistance = Math.max(
+                    1,
+                    insertion.extraDistance
+                );
+
+                const extraTime =
+                    extraDistance /
+                    AVERAGE_SPEED_M_PER_MIN;
+
+                const detourRatio =
+                    extraDistance /
+                    Math.max(
+                        1,
+                        orderDistance
+                    );
+
+                let recommendation;
+                let reason;
+
+                // IDLE RIDER
+
+                if (activeOrderCount === 0) {{
+
+                    recommendation = "ACCEPT";
+
+                    reason =
+                        "Rider is idle";
+                }}
+
+                // ACTIVE RIDER
+
+                else if (
+
+                    extraTime <= 7 &&
+                    detourRatio <= 0.4
+
+                ) {{
+
+                    recommendation = "ACCEPT";
+
+                    reason =
+                        `Adds only ${{extraTime.toFixed(1)}} min`;
+                }}
+
+                else {{
+
+                    recommendation = "REJECT";
+
+                    reason =
+                        `Adds ${{extraTime.toFixed(1)}} min and detour is too large`;
+                }}
 
                 return {{
+
                     platform,
+
                     store,
+
                     pickupNodeId,
-                    dropNodeId: customerNodeId,
-                    reward,
+
+                    dropNodeId:
+                        customerNodeId,
+
                     orderDistance,
+
                     insertion,
-                    score,
+
+                    extraDistance,
+
+                    extraTime,
+
                     detourRatio,
+
+                    reason,
+
                     recommendation
+
                 }};
             }}
 
@@ -724,27 +831,143 @@ def add_agent_animation(
                 `);
             }}
 
-            function createOrderAtNode(customerNodeId) {{
-                const platform = document.getElementById("order-platform").value;
-                const order = evaluateOrder(platform, customerNodeId);
+            async function createOrderAtNode(customerNodeId) {{
 
-                if (order) {{
-                    renderOrder(order);
+                const platform =
+                    document.getElementById(
+                        "order-platform"
+                    ).value;
+
+                try {{
+
+                    if (customerMarker) {{
+                        customerMarker.remove();
+                    }}
+
+                    if (pickupMarker) {{
+                        pickupMarker.remove();
+                    }}
+
+                    customerMarker = L.circleMarker(
+
+                        graphData.nodes[String(customerNodeId)],
+
+                        {{
+
+                            radius: 10,
+
+                            color: "red",
+
+                            fillColor: "red",
+
+                            fillOpacity: 1
+
+                        }}
+
+                    ).addTo({map_name});
+
+                    const response = await fetch(
+
+                        "http://127.0.0.1:8000/optimize",
+
+                        {{
+
+                            method: "POST",
+
+                            headers: {{
+
+                                "Content-Type":
+                                    "application/json"
+
+                            }},
+
+                            body: JSON.stringify({{
+
+                                platform,
+
+                                customer_node:
+                                    Number(customerNodeId)
+
+                            }})
+
+                        }}
+
+                    );
+
+                    const result =
+                        await response.json();
+
+                    console.log(
+                        "Optimizer Response:",
+                        result
+                    );
+
+                    if (!result.accepted) {{
+
+                        setStatus(
+                            "Order Rejected"
+                        );
+
+                        return;
+                    }}
+
+                    setStatus(`
+
+                        <strong>ORDER ACCEPTED</strong><br>
+
+                        Customer:
+                        ${{
+                            customerNodeId
+                        }}<br>
+
+                        Distance:
+                        ${{
+                            result.distance.toFixed(0)
+                        }} m<br>
+
+                        Travel Time:
+                        ${{
+                            result.travel_time.toFixed(1)
+                        }} min
+
+                    `);
+
+                    updateActiveRoute(
+                        result.route_nodes
+                    );
+
                 }}
+
+                catch(error) {{
+
+                    console.error(
+                        error
+                    );
+
+                    setStatus(
+                        error.toString()
+                    );
+
+                }}
+
             }}
 
             function updateActiveRoute(routeNodeIds) {{
-                pauseAgentRoute();
-                activeRouteNodeIds = routeNodeIds;
-                agentRoutePoints = activeRouteNodeIds.map(
-                    (nodeId) => graphData.nodes[nodeId]
+
+                activeRouteNodeIds = routeNodeIds.map(
+                    nodeId => String(nodeId)
                 );
-                currentRouteIndex = 0;
-                activeRouteLine.setLatLngs(agentRoutePoints);
-                movingAgentMarker.setLatLng(agentRoutePoints[0]);
-                rotateAgentTowardNextPoint();
-                {map_name}.fitBounds(agentRoutePoints);
+
+                agentRoutePoints = activeRouteNodeIds.map(
+                    nodeId => graphData.nodes[nodeId]
+                );
+
+                activeRouteLine.setLatLngs(
+                    agentRoutePoints
+                );
+
                 updateCurrentStatus();
+
             }}
 
             updateCurrentStatus();
@@ -867,47 +1090,6 @@ def add_agent_animation(
                 );
             }});
 
-            document
-                .getElementById("accept-order")
-                .addEventListener("click", function () {{
-                    if (!candidateOrder) {{
-                        setStatus("Create an order before accepting.");
-                        return;
-                    }}
-
-                    const acceptedRoute = [
-                        ...activeRouteNodeIds.slice(0, currentRouteIndex),
-                        ...candidateOrder.insertion.route
-                    ];
-
-                    updateActiveRoute(acceptedRoute);
-                    activeStopNodeIds.push(candidateOrder.pickupNodeId);
-                    activeStopNodeIds.push(candidateOrder.dropNodeId);
-                    activeStopLabels[candidateOrder.pickupNodeId] = `Pickup ${{candidateOrder.platform}} from ${{candidateOrder.store.name}}`;
-                    activeStopLabels[candidateOrder.dropNodeId] = `Drop ${{candidateOrder.platform}} customer`;
-                    activeOrderCount += 1;
-                    committedReward += candidateOrder.reward;
-                    updateCurrentStatus();
-                    setStatus(`
-                        Accepted ${{candidateOrder.platform}} order.<br>
-                        Reward gained: ₹${{candidateOrder.reward}}<br>
-                        New route distance: ${{Math.round(candidateOrder.insertion.newDistance)}} m
-                    `);
-                    candidateOrder = null;
-                    clearCandidateMarkers();
-                }});
-
-            document
-                .getElementById("reject-order")
-                .addEventListener("click", function () {{
-                    candidateOrder = null;
-                    clearCandidateMarkers();
-                    pickFromMap = false;
-                    mapPickButton.classList.remove("active");
-                    {map_name}.getContainer().style.cursor = "";
-                    rewardInput.value = 0;
-                    setStatus("Order rejected. Generate another candidate.");
-                }});
         }});
     """
 
@@ -1013,9 +1195,9 @@ def plot_graph_with_stores(
                     row["platform"]
                 ),
 
-                icon_size=(60, 60),
+                icon_size=(36, 36),
 
-                icon_anchor=(22,22)
+                icon_anchor=(18, 18)
 
             )
 

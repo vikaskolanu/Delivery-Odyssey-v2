@@ -26,3 +26,5 @@ shapely==2.1.2
 six==1.17.0
 urllib3==2.7.0
 xyzservices==2026.3.0
+fastapi
+uvicorn
