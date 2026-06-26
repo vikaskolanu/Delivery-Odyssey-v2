@@ -119,7 +119,7 @@ The route with the lowest feasible completion time is selected.
 
 ## 📸 Demo
 
-(Add screenshots or GIFs here.)
+<img width="1463" height="795" alt="Screenshot 2026-06-26 at 12 01 49 PM" src="https://github.com/user-attachments/assets/e03e64b0-3296-469a-bf89-8518d2086b4f" />
 
 ---
 
