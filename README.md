@@ -1,22 +1,130 @@
-source /Users/vikaskolanu/delivery_Odyssey_v3/venv/bin/activate
-// this is for activating the virtual environment for this folder
+# 🚀 Delivery Odyssey
 
-python main.py
-// for running the file 
+**Dynamic Multi-Order Route Optimization Simulator for Quick-Commerce Logistics**
 
-open main.html 
-// opens the map on the browser 
+Delivery Odyssey is an interactive simulation platform that models real-world quick-commerce delivery operations using OpenStreetMap road networks, dynamic route optimization, and time-constrained order scheduling.
 
-uvicorn api.server:app --reload
-// this is to run the fastAPI backend
+The project demonstrates how delivery riders can be assigned and re-routed intelligently while satisfying preparation times and delivery deadlines.
 
-to verify the backend, we need to check the health at this page
-http://127.0.0.1:8000/health
-// we'll get something like  " optimizer : ready "
+---
 
-python -m http.server 5500
-// this should be run, to have a connection with the fastAPI backend also 
+## ✨ Features
 
-http://localhost:5500/map.html
- // this is where we can see our visualisation
+* 🌍 Real road-network routing using OpenStreetMap
+* 🚴 Dynamic rider movement simulation
+* 🏬 Multi-platform warehouse support (Zepto, Blinkit, Instamart)
+* 📦 Time-aware order generation
+* 🧠 Multi-order route optimization
+* ⚡ FastAPI optimization backend
+* 🗺️ Interactive map visualization
+* 📍 Custom order placement on the map
+* 🎮 Simulation controls (Play, Pause, Restart)
 
+---
+
+## 🏗️ System Architecture
+
+```
+          User
+
+            │
+
+            ▼
+
+ Interactive Map UI
+
+            │
+
+            ▼
+
+      FastAPI Backend
+
+            │
+
+            ▼
+
+ Route Optimization Engine
+
+            │
+
+            ▼
+
+ Best Feasible Route
+
+            │
+
+            ▼
+
+ Rider Simulation
+```
+
+---
+
+## 🧠 Optimization Strategy
+
+Each incoming order contains:
+
+* Pickup location
+* Customer location
+* Preparation time
+* Delivery deadline
+
+Instead of greedily assigning the new order, the optimizer generates every valid pickup-delivery sequence while respecting the constraint that every pickup must occur before its corresponding delivery.
+
+Each feasible sequence is simulated over the real road network.
+
+For every route the simulator evaluates:
+
+* Travel distance
+* Travel time
+* Waiting time at stores
+* Delivery deadlines
+
+The route with the lowest feasible completion time is selected.
+
+---
+
+## 🛠️ Tech Stack
+
+**Backend**
+
+* Python
+* FastAPI
+* NetworkX
+* OSMnx
+
+**Frontend**
+
+* HTML
+* CSS
+* JavaScript
+* Leaflet.js
+
+**Mapping**
+
+* OpenStreetMap
+
+---
+
+## 🚀 Future Improvements
+
+* Fleet-level optimization with multiple riders
+* Dynamic order insertion without restarting routes
+* Intelligent order batching
+* Traffic-aware routing
+* Machine-learning based order acceptance
+* Live analytics dashboard
+
+---
+
+## 📸 Demo
+
+(Add screenshots or GIFs here.)
+
+---
+
+## 👨‍💻 Author
+
+**Vikas Kolanu**
+
+B.Tech, IIT Goa
