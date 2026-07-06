@@ -1,41 +1,41 @@
-<div class="do-sidebar">
-
+<!-- LEFT PANEL -->
+<div class="panel panel-left">
     <!-- HEADER -->
     <div class="do-header">
-        <div class="logo-mark"></div>
         <div>
             <h2>Delivery Odyssey</h2>
             <p>Dynamic Route Optimizer</p>
         </div>
     </div>
-
+    
     <!-- RIDER -->
     <div class="card">
         <div class="card-label">Rider</div>
         <div id="current-status" class="status-box">
-            <div class="status-row">
-                <span>Status</span>
-                <span class="chip moving">MOVING</span>
-            </div>
-            <div class="status-row">
-                <span>Simulation</span>
-                <span id="simulation-time">0 min</span>
-            </div>
-            <div class="status-row">
-                <span>Speed</span>
-                <span>350 m/min</span>
-            </div>
+            Loading rider state...
         </div>
     </div>
 
     <!-- ACTIVE DELIVERIES -->
     <div class="card">
         <div class="card-label">Active Deliveries</div>
+        <div class="helper-copy">Live order phases and delivery windows.</div>
         <div id="active-orders-list">
             <div class="empty-state">No active orders</div>
         </div>
     </div>
+    
+    <!-- DELIVERED ORDERS -->
+    <div class="card">
+        <div class="card-label">Delivered Orders</div>
+        <div id="delivered-orders-list">
+            <div class="empty-state">No delivered orders yet</div>
+        </div>
+    </div>
+</div>
 
+<!-- RIGHT PANEL -->
+<div class="panel panel-right">
     <!-- OPTIMIZER -->
     <div class="card">
         <div class="card-label">Optimizer</div>
@@ -46,7 +46,7 @@
 
     <!-- CONTROLS -->
     <div class="card">
-        <div class="card-label">Controls</div>
+        <div class="card-label">Order Generation</div>
 
         <div class="field-group">
             <label>Platform</label>
@@ -57,38 +57,21 @@
             </select>
         </div>
 
+        <div class="field-group">
+            <label>Delivery Time (m)</label>
+            <input id="order-sla" type="number" min="1" step="1" value="15">
+        </div>
+
         <button id="random-order" class="btn btn-primary">Random Order</button>
         <button id="map-pick-order" class="btn btn-secondary">Pick From Map</button>
-
-        <div class="btn-row">
-            <button id="play-agent-route" class="btn btn-primary">Play</button>
-            <button id="pause-agent-route" class="btn btn-secondary">Pause</button>
-        </div>
-
-        <button id="restart-agent-route" class="btn btn-ghost">Restart</button>
     </div>
 
-    <!-- LEGEND -->
-    <div class="card">
-        <div class="card-label">Legend</div>
-        <div class="legend-grid">
-            <div class="legend-item">
-                <span class="dot rider"></span>
-                <span>Rider</span>
-            </div>
-            <div class="legend-item">
-                <span class="dot pickup"></span>
-                <span>Pickup</span>
-            </div>
-            <div class="legend-item">
-                <span class="dot customer"></span>
-                <span>Customer</span>
-            </div>
-            <div class="legend-item">
-                <span class="dot warehouse"></span>
-                <span>Warehouse</span>
-            </div>
-        </div>
-    </div>
 
+</div>
+
+<!-- BOTTOM PANEL -->
+<div class="panel panel-bottom">
+    <button id="play-agent-route" class="btn btn-primary" style="margin: 0; min-width: 100px;">Play</button>
+    <button id="pause-agent-route" class="btn btn-secondary" style="margin: 0; min-width: 100px;">Pause</button>
+    <button id="restart-agent-route" class="btn btn-ghost" style="margin: 0; min-width: 100px;">Restart</button>
 </div>

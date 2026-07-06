@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import pandas as pd
+import networkx as nx
 
 from api.models import (
     OptimizeRequest
@@ -73,6 +74,15 @@ def complete_order(order_index: int):
     return {"remaining": len(active_orders)}
 
 
+@app.post("/agent/reset")
+def reset_agent():
+    global active_orders, agent_current_node, current_time
+    active_orders.clear()
+    agent_current_node = None
+    current_time = 0.0
+    return {"ok": True, "remaining": 0}
+
+
 # ───────────────────────────────────────────────────────────────────────────
 
 @app.get("/")
@@ -88,8 +98,6 @@ def health():
 @app.post("/optimize")
 def optimize(request: OptimizeRequest):
 
-    global agent_current_node
-
     customer_node = request.customer_node
 
     # Validate node exists in graph
@@ -100,66 +108,95 @@ def optimize(request: OptimizeRequest):
     customer_lat = customer_data["y"]
     customer_lon = customer_data["x"]
 
-    selected_store = nearest_platform_store(
-        stores,
-        request.platform,
-        customer_lat,
-        customer_lon
-    )
+    platform_stores = stores[stores["platform"] == request.platform]
+    best_overall_result = None
+    best_store = None
+    best_pickup_node = None
+    best_new_order = None
+    
+    prep_time = 4.0
 
-    pickup_node = get_nearest_node(
-        graph,
-        selected_store["lat"],
-        selected_store["lon"]
-    )
+    for _, store in platform_stores.iterrows():
+        pickup_node = get_nearest_node(
+            graph,
+            store["lat"],
+            store["lon"]
+        )
 
-    new_order = Order(
-        platform=request.platform,
-        pickup_node=pickup_node,
-        customer_node=customer_node,
-        created_time=current_time,
-        prep_time=3,
-        sla_minutes=15
-    )
+        try:
+            nx.shortest_path(graph, pickup_node, customer_node, weight="length")
+        except nx.NetworkXNoPath:
+            continue
 
-    # FIX: use pickup_node as starting position if agent not yet placed
-    start_node = agent_current_node if agent_current_node is not None else pickup_node
+        new_order = Order(
+            platform=request.platform,
+            pickup_node=pickup_node,
+            customer_node=customer_node,
+            created_time=request.current_time,
+            prep_time=prep_time,
+            sla_minutes=request.sla_minutes,
+            is_picked_up=False
+        )
 
-    # Try with new order added
-    candidate_orders = list(active_orders) + [new_order]
+        candidate_orders = []
+        for o in request.active_orders:
+            order_obj = Order(
+                platform=o.platform,
+                pickup_node=o.pickup_node,
+                customer_node=o.customer_node,
+                created_time=o.created_time,
+                prep_time=o.prep_time,
+                sla_minutes=o.sla_minutes,
+                is_picked_up=o.is_picked_up
+            )
+            candidate_orders.append(order_obj)
 
-    result = find_best_route(
-        graph,
-        start_node,
-        candidate_orders,
-        current_time
-    )
+        candidate_orders.append(new_order)
 
-    if result is None:
+        result = find_best_route(
+            graph,
+            request.current_node,
+            candidate_orders,
+            request.current_time
+        )
+        
+        if result is not None:
+            if best_overall_result is None or result["finish_time"] < best_overall_result["finish_time"]:
+                best_overall_result = result
+                best_store = store
+                best_pickup_node = pickup_node
+                best_new_order = new_order
+
+    if best_overall_result is None:
         return {
             "accepted": False,
-            "reason": "No feasible route — SLA would be violated"
+            "reason": "No feasible route — SLA would be violated for all possible warehouses"
         }
+        
+    result = best_overall_result
+    selected_store = best_store
+    pickup_node = best_pickup_node
+    new_order = best_new_order
 
-    # Commit order
-    active_orders.append(new_order)
-
-    # FIX: update agent_current_node to the end of the new route
-    # so the next order routes from the correct position
-    if result["route_nodes"]:
-        agent_current_node = result["route_nodes"][-1]
-
-    # Build readable sequence labels e.g. ["P1","D1","P2","D2"]
+    # Build readable sequence labels
     seq_labels = []
     for stop_type, idx in result["sequence"]:
-        order = candidate_orders[idx]
-        label = f"P{idx + 1}" if stop_type == "P" else f"D{idx + 1}"
+        is_new = (idx == len(candidate_orders) - 1)
+        if is_new:
+            label = f"P (New)" if stop_type == "P" else f"D (New)"
+        else:
+            orig_order = request.active_orders[idx]
+            label = f"P (Order {orig_order.id})" if stop_type == "P" else f"D (Order {orig_order.id})"
         seq_labels.append(label)
 
     return {
         "accepted": True,
         "store_name": selected_store["name"],
         "platform": request.platform,
+        "pickup_node": pickup_node,
+        "prep_time": prep_time,
+        "ready_time": new_order.ready_time,
+        "deadline_time": new_order.deadline_time,
         "sequence": seq_labels,
         "distance": round(result["distance"], 2),
         "travel_time": round(result["travel_time"], 2),

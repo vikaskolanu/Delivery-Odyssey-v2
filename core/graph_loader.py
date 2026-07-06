@@ -18,12 +18,13 @@ def load_graph():
     else:
 
         graph = ox.graph_from_place(
-
             "Whitefield, Bengaluru, Karnataka, India",
-
-            network_type="drive"
-
+            network_type="all",
+            simplify=False
         )
+        
+        # Convert to undirected to prevent one-way street loops
+        graph = graph.to_undirected()
 
         ox.save_graphml(
 
@@ -36,8 +37,7 @@ def load_graph():
     # KEEP ONLY THE LARGEST CONNECTED ROAD NETWORK
 
     largest_component = max(
-
-        nx.strongly_connected_components(
+        nx.connected_components(
             graph
         ),
 

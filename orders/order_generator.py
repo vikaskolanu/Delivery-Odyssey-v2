@@ -4,7 +4,7 @@ import networkx as nx
 from orders.order import Order
 
 from core.utils import (
-    nearest_platform_store
+    nearest_platform_store,
 )
 
 from core.graph_loader import (
@@ -23,6 +23,8 @@ def generate_order(
     simulation_time
 
 ):
+
+    route = None
 
     while True:
 
@@ -63,8 +65,7 @@ def generate_order(
         )
 
         try:
-
-            nx.shortest_path(
+            route = nx.shortest_path(
 
                 graph,
 
@@ -82,13 +83,7 @@ def generate_order(
 
             continue
 
-    prep_time = random.randint(
-
-        2,
-
-        6
-
-    )
+    prep_time = 4.0
 
     sla_minutes = 15
 

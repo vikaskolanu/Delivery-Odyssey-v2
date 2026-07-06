@@ -1,5 +1,3 @@
-import subprocess
-import sys
 import pandas as pd
 
 from core.graph_loader import load_graph, get_nearest_node
@@ -70,16 +68,7 @@ def main():
         result["route_nodes"]
     )
     print("\nmap.html saved — open it in your browser")
-
-    # ── Start FastAPI server ────────────────────────────────────────────────
-    print("Starting API at http://127.0.0.1:8000\n")
-    subprocess.run([
-        sys.executable, "-m", "uvicorn",
-        "api.server:app",
-        "--reload",
-        "--port", "8000",
-        "--host", "127.0.0.1"
-    ])
+    print("Run `uvicorn api.server:app --reload` separately when you want the API.\n")
 
 
 if __name__ == "__main__":

@@ -3,6 +3,23 @@ import math
 AVERAGE_SPEED_M_PER_MIN = 350
 
 
+def estimate_order_reward(
+    distance_meters
+):
+
+    return round(
+
+        max(
+            60,
+            min(
+                350,
+                distance_meters * 0.055
+            )
+        )
+
+    )
+
+
 def distance_to_minutes(
     distance_meters
 ):

@@ -17,7 +17,8 @@ def generate_valid_sequences(orders):
     stops = []
 
     for i, order in enumerate(orders):
-        stops.append(("P", i))
+        if not getattr(order, "is_picked_up", False):
+            stops.append(("P", i))
         stops.append(("D", i))
 
     valid_sequences = []
@@ -31,7 +32,7 @@ def generate_valid_sequences(orders):
             if stop_type == "P":
                 picked.add(order_id)
             elif stop_type == "D":
-                if order_id not in picked:
+                if not getattr(orders[order_id], "is_picked_up", False) and order_id not in picked:
                     valid = False
                     break
 
@@ -63,6 +64,7 @@ def simulate_route(
     total_wait_time = 0
     current_node = current_position
     simulation_time = current_time
+    delivery_times = {}
 
     for stop in sequence:
 
@@ -70,7 +72,6 @@ def simulate_route(
         order = orders[order_id]
         target_node = get_stop_node(stop, orders)
 
-        # FIX: shortest_route now returns None instead of raising
         route = shortest_route(graph, current_node, target_node)
 
         if route is None:
@@ -93,17 +94,22 @@ def simulate_route(
         if stop_type == "D":
             if simulation_time > order.deadline_time:
                 return {"feasible": False}
+            delivery_times[order_id] = simulation_time
 
         current_node = target_node
+
+    chrono_delivery_times = tuple(
+        delivery_times.get(i, simulation_time) for i in range(len(orders))
+    )
 
     return {
         "feasible": True,
         "distance": total_distance,
-        # FIX: return elapsed time, not absolute simulation clock
         "travel_time": simulation_time - current_time,
         "waiting_time": total_wait_time,
         "finish_time": simulation_time,
-        "sequence": sequence
+        "sequence": sequence,
+        "delivery_times": chrono_delivery_times
     }
 
 
@@ -143,9 +149,21 @@ def find_best_route(
     orders,
     current_time
 ):
+    if not orders:
+        return {
+            "feasible": True,
+            "distance": 0.0,
+            "travel_time": 0.0,
+            "waiting_time": 0.0,
+            "finish_time": current_time,
+            "sequence": [],
+            "route_nodes": []
+        }
+
     sequences = generate_valid_sequences(orders)
 
     best_result = None
+    best_key = None
 
     for sequence in sequences:
 
@@ -157,16 +175,14 @@ def find_best_route(
             current_time
         )
 
-        # FIX: use .get() so infeasible dict {"feasible": False} doesn't KeyError
         if not result.get("feasible"):
             continue
 
-        if best_result is None:
-            best_result = result
-            continue
+        candidate_key = result["delivery_times"]
 
-        if result["travel_time"] < best_result["travel_time"]:
+        if best_result is None or candidate_key < best_key:
             best_result = result
+            best_key = candidate_key
 
     if best_result is None:
         return None

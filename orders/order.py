@@ -5,10 +5,10 @@ class Order:
         platform,
         pickup_node,
         customer_node,
-
         created_time,
         prep_time=3,
-        sla_minutes=15
+        sla_minutes=15,
+        is_picked_up=False
     ):
 
         self.platform = platform
@@ -34,6 +34,8 @@ class Order:
             created_time +
             sla_minutes
         )
+
+        self.is_picked_up = is_picked_up
 
     def __str__(self):
 

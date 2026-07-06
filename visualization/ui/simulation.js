@@ -51,6 +51,7 @@ animation_script = f"""
 
             let currentRouteIndex = 0;
             let animationFrameId = null;
+            let isPlaying = false;
             let segmentStartTime = null;
             let segmentDurationMs = 600;
             let activeTurnSlowdown = 1;
@@ -60,13 +61,40 @@ animation_script = f"""
             const orderStatus = document.getElementById("order-status");
             const currentStatus = document.getElementById("current-status");
             const mapPickButton = document.getElementById("map-pick-order");
+            const optimizerUrl = "http://127.0.0.1:8001/optimize";
+            const agentResetUrl = "http://127.0.0.1:8001/agent/reset";
 
-            L.DomEvent.disableClickPropagation(
-                document.querySelector(".order-sidebar")
-            );
+            const sidebarElement = document.querySelector(".do-sidebar");
+
+            if (sidebarElement) {{
+                L.DomEvent.disableClickPropagation(sidebarElement);
+            }}
 
             function setStatus(html) {{
                 orderStatus.innerHTML = html;
+            }}
+
+            async function resetBackendAgentState() {{
+                try {{
+                    await fetch(
+                        agentResetUrl,
+                        {{
+                            method: "POST"
+                        }}
+                    );
+                }} catch (error) {{
+                    console.warn("Failed to reset backend state", error);
+                }}
+            }}
+
+            function resetLocalRouteState() {{
+                activeOrderCount = 0;
+                activeRouteNodeIds = [];
+                activeStopNodeIds = [];
+                activeStopLabels = {{}};
+                agentRoutePoints = [];
+                currentRouteIndex = 0;
+                activeRouteLine.setLatLngs([]);
             }}
 
             function nextStopInfo() {{
@@ -577,8 +605,11 @@ animation_script = f"""
 
                 else if (
 
-                    extraTime <= 7 &&
-                    detourRatio <= 0.4
+                    (
+                        extraTime <= 12 &&
+                        detourRatio <= 0.65
+                    ) ||
+                    order.reward / Math.max(1, extraDistance) >= 0.03
 
                 ) {{
 
@@ -668,9 +699,19 @@ animation_script = f"""
             rotateAgentTowardNextPoint();
 
             function animateAgent(timestamp) {{
+                if (!isPlaying) {{
+                    animationFrameId = null;
+                    segmentStartTime = null;
+                    return;
+                }}
+
                 if (currentRouteIndex >= agentRoutePoints.length - 1) {{
                     animationFrameId = null;
                     segmentStartTime = null;
+                    resetLocalRouteState();
+                    resetBackendAgentState();
+                    setStatus("Delivery completed. Ready for the next order.");
+                    updateCurrentStatus();
                     return;
                 }}
 
@@ -712,18 +753,22 @@ animation_script = f"""
                     updateCurrentStatus();
                 }}
 
-                animationFrameId = requestAnimationFrame(animateAgent);
+                if (isPlaying) {{
+                    animationFrameId = requestAnimationFrame(animateAgent);
+                }}
             }}
 
             function playAgentRoute() {{
-                if (animationFrameId !== null) {{
+                if (isPlaying) {{
                     return;
                 }}
 
+                isPlaying = true;
                 animationFrameId = requestAnimationFrame(animateAgent);
             }}
 
             function pauseAgentRoute() {{
+                isPlaying = false;
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
                 segmentStartTime = null;
