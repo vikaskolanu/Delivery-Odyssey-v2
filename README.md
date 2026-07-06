@@ -120,7 +120,8 @@ The route with the lowest feasible completion time is selected.
 
 ## 📸 Demo
 
-<img width="1463" height="795" alt="Screenshot 2026-06-26 at 12 01 49 PM" src="https://github.com/user-attachments/assets/e03e64b0-3296-469a-bf89-8518d2086b4f" />
+<img width="1467" height="797" alt="Screenshot 2026-07-06 at 11 01 48 PM" src="https://github.com/user-attachments/assets/aaaca52c-e236-4b48-a9ca-649344674418" />
+
 
 ---
 
