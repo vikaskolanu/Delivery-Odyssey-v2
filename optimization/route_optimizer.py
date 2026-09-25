@@ -1,5 +1,3 @@
-from itertools import permutations
-
 from core.route_planner import (
     shortest_route,
     route_distance
@@ -12,38 +10,7 @@ def distance_to_minutes(distance):
     return distance / AVERAGE_SPEED_M_PER_MIN
 
 
-def generate_valid_sequences(orders):
-
-    stops = []
-
-    for i, order in enumerate(orders):
-        if not getattr(order, "is_picked_up", False):
-            stops.append(("P", i))
-        stops.append(("D", i))
-
-    valid_sequences = []
-
-    for sequence in permutations(stops):
-
-        valid = True
-        picked = set()
-
-        for stop_type, order_id in sequence:
-            if stop_type == "P":
-                picked.add(order_id)
-            elif stop_type == "D":
-                if not getattr(orders[order_id], "is_picked_up", False) and order_id not in picked:
-                    valid = False
-                    break
-
-        if valid:
-            valid_sequences.append(sequence)
-
-    return valid_sequences
-
-
 def get_stop_node(stop, orders):
-
     stop_type, order_id = stop
     order = orders[order_id]
 
@@ -58,8 +25,14 @@ def simulate_route(
     current_position,
     sequence,
     orders,
-    current_time
+    current_time,
+    path_cache=None
 ):
+    """
+    Simulates executing a sequence of stops from current_position.
+    Validates prep times, travel times, and SLA deadlines.
+    Returns feasibility status, total distance, finish time, and chronological delivery times.
+    """
     total_distance = 0
     total_wait_time = 0
     current_node = current_position
@@ -67,30 +40,38 @@ def simulate_route(
     delivery_times = {}
 
     for stop in sequence:
-
         stop_type, order_id = stop
         order = orders[order_id]
         target_node = get_stop_node(stop, orders)
 
-        route = shortest_route(graph, current_node, target_node)
+        cache_key = (current_node, target_node)
+        if path_cache is not None and cache_key in path_cache:
+            route, distance = path_cache[cache_key]
+        else:
+            route = shortest_route(graph, current_node, target_node)
+            if route is None:
+                if path_cache is not None:
+                    path_cache[cache_key] = (None, float('inf'))
+                return {"feasible": False}
+            distance = route_distance(graph, route)
+            if path_cache is not None:
+                path_cache[cache_key] = (route, distance)
 
         if route is None:
             return {"feasible": False}
 
-        distance = route_distance(graph, route)
         travel_time = distance_to_minutes(distance)
-
         total_distance += distance
         simulation_time += travel_time
 
-        # Wait at warehouse if order isn't ready yet
+        # Wait at warehouse if order is not ready yet
         if stop_type == "P":
             if simulation_time < order.ready_time:
                 wait_time = order.ready_time - simulation_time
                 total_wait_time += wait_time
                 simulation_time += wait_time
 
-        # SLA check at delivery
+        # SLA check at customer delivery
         if stop_type == "D":
             if simulation_time > order.deadline_time:
                 return {"feasible": False}
@@ -108,26 +89,117 @@ def simulate_route(
         "travel_time": simulation_time - current_time,
         "waiting_time": total_wait_time,
         "finish_time": simulation_time,
-        "sequence": sequence,
+        "sequence": tuple(sequence),
         "delivery_times": chrono_delivery_times
     }
+
+
+def generate_insertion_candidates(current_sequence, order_id, order):
+    """
+    Generates all valid insertions of an order into an existing sequence of stops.
+    - If order is already picked up: inserts D at all positions (m+1 candidates).
+    - If order is not picked up: inserts P at index i and D at index j where i <= j ((m+1)*(m+2)/2 candidates).
+    """
+    candidates = []
+    m = len(current_sequence)
+    is_picked_up = getattr(order, "is_picked_up", False)
+
+    if is_picked_up:
+        # Only delivery needs to be inserted
+        for pos in range(m + 1):
+            new_seq = list(current_sequence)
+            new_seq.insert(pos, ("D", order_id))
+            candidates.append(tuple(new_seq))
+    else:
+        # Both Pickup and Delivery must be inserted, with Pickup before Delivery
+        for i in range(m + 1):
+            for j in range(i, m + 1):
+                new_seq = list(current_sequence)
+                new_seq.insert(i, ("P", order_id))
+                new_seq.insert(j + 1, ("D", order_id))
+                candidates.append(tuple(new_seq))
+
+    return candidates
+
+
+def refine_with_local_search(
+    graph,
+    current_position,
+    sequence,
+    orders,
+    current_time,
+    path_cache=None
+):
+    """
+    Runs a 2-opt / relocation local search over the sequence to explore
+    further improvements while strictly preserving precedence (P before D).
+    """
+    best_seq = list(sequence)
+    best_eval = simulate_route(graph, current_position, best_seq, orders, current_time, path_cache)
+    if not best_eval.get("feasible"):
+        return sequence, best_eval
+
+    improved = True
+    while improved:
+        improved = False
+        n = len(best_seq)
+
+        for i in range(n):
+            for j in range(n):
+                if i == j:
+                    continue
+
+                # Try relocating element i to position j
+                candidate = list(best_seq)
+                elem = candidate.pop(i)
+                candidate.insert(j, elem)
+
+                # Check precedence constraint (P must precede D for each order)
+                valid_precedence = True
+                picked = set()
+                for stop_type, order_idx in candidate:
+                    if stop_type == "P":
+                        picked.add(order_idx)
+                    elif stop_type == "D":
+                        if not getattr(orders[order_idx], "is_picked_up", False) and order_idx not in picked:
+                            valid_precedence = False
+                            break
+
+                if not valid_precedence:
+                    continue
+
+                eval_res = simulate_route(graph, current_position, candidate, orders, current_time, path_cache)
+                if eval_res.get("feasible"):
+                    if eval_res["finish_time"] < best_eval["finish_time"] - 1e-4:
+                        best_seq = candidate
+                        best_eval = eval_res
+                        improved = True
+                        break
+            if improved:
+                break
+
+    return tuple(best_seq), best_eval
 
 
 def build_route_nodes(
     graph,
     current_position,
     sequence,
-    orders
+    orders,
+    path_cache=None
 ):
     full_route = []
     current_node = current_position
     first_segment = True
 
     for stop in sequence:
-
         target_node = get_stop_node(stop, orders)
 
-        route = shortest_route(graph, current_node, target_node)
+        cache_key = (current_node, target_node)
+        if path_cache is not None and cache_key in path_cache and path_cache[cache_key][0] is not None:
+            route = path_cache[cache_key][0]
+        else:
+            route = shortest_route(graph, current_node, target_node)
 
         if route is None:
             return []
@@ -149,6 +221,11 @@ def find_best_route(
     orders,
     current_time
 ):
+    """
+    Finds the optimal delivery route for a set of orders using Cheapest Feasible Insertion (CFI)
+    combined with local search refinement and shortest-path memoization.
+    Time Complexity: O(k^2) instead of O((2k)!/2^k).
+    """
     if not orders:
         return {
             "feasible": True,
@@ -156,42 +233,63 @@ def find_best_route(
             "travel_time": 0.0,
             "waiting_time": 0.0,
             "finish_time": current_time,
-            "sequence": [],
+            "sequence": (),
             "route_nodes": []
         }
 
-    sequences = generate_valid_sequences(orders)
+    path_cache = {}
+    current_sequence = ()
 
-    best_result = None
-    best_key = None
+    # Incremental cheapest feasible insertion for each order
+    for order_id, order in enumerate(orders):
+        candidates = generate_insertion_candidates(current_sequence, order_id, order)
+        best_candidate = None
+        best_candidate_eval = None
 
-    for sequence in sequences:
+        for cand in candidates:
+            # Simulate candidate with sub-list of orders evaluated so far
+            eval_res = simulate_route(
+                graph,
+                current_position,
+                cand,
+                orders[:order_id + 1],
+                current_time,
+                path_cache
+            )
 
-        result = simulate_route(
-            graph,
-            current_position,
-            sequence,
-            orders,
-            current_time
-        )
+            if not eval_res.get("feasible"):
+                continue
 
-        if not result.get("feasible"):
-            continue
+            if best_candidate_eval is None or eval_res["finish_time"] < best_candidate_eval["finish_time"]:
+                best_candidate = cand
+                best_candidate_eval = eval_res
 
-        candidate_key = result["delivery_times"]
+        if best_candidate is None:
+            # No feasible insertion found that satisfies all deadlines
+            return None
 
-        if best_result is None or candidate_key < best_key:
-            best_result = result
-            best_key = candidate_key
+        current_sequence = best_candidate
 
-    if best_result is None:
-        return None
-
-    best_result["route_nodes"] = build_route_nodes(
+    # Refine the final route with local search (2-opt / relocate)
+    refined_sequence, final_eval = refine_with_local_search(
         graph,
         current_position,
-        best_result["sequence"],
-        orders
+        current_sequence,
+        orders,
+        current_time,
+        path_cache
     )
 
-    return best_result
+    if not final_eval.get("feasible"):
+        return None
+
+    final_eval["route_nodes"] = build_route_nodes(
+        graph,
+        current_position,
+        refined_sequence,
+        orders,
+        path_cache
+    )
+
+    return final_eval
+
